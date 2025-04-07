@@ -1,5 +1,4 @@
-// Connect To DB 
-// TODO: from env (pg)
+// Connect To DB from env (pg)
 import pg from 'pg';
 import assert from 'assert';
 const { Pool, DatabaseError } = pg;
