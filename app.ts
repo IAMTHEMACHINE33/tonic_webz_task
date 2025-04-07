@@ -1,6 +1,8 @@
-import hitApi from './api.hit.ts';
+import WebzApi from './api.hit.ts';
 import Database  from './postgres.connection.ts';
+import { QueryBuilder } from './query.builder.ts';
 
+// DB Initializing Part
 const db = new Database({
     user: process.env.DB_USER!,
     password: process.env.DB_PASSWORD!,
@@ -10,31 +12,38 @@ const db = new Database({
 });
 await db.initialize();
 
-// const API_WEBZ = "api.webz.io/newsApiLite?token=[token]&q=[query]"
+
+// Query Building Part
+const {literal, stemming, disableStemming} = QueryBuilder;
+const queryBuilder = new QueryBuilder('initial');
+const api_query = queryBuilder
+    .and('name','surname')
+    .and('another')
+    .or(literal('abc'))
+    .getFinalQuery();
+
+
+// API Request To Webz Part
 const API_WEBZ = process.env.API_WEBZ ?? 'api.webz.io/newsApiLite';
-const API_WEBZ_BASE = API_WEBZ.slice(0, API_WEBZ.indexOf('/'));
-
 const API_TOKEN = process.env.API_TOKEN;
-const api_query = "bitcoin";
-const api_webz_path = `${API_WEBZ.slice(API_WEBZ.indexOf('/'))}\
-?token=${API_TOKEN}\
-&q=${api_query}`;
-
 const options = {
-    host: API_WEBZ_BASE,
-    path: api_webz_path,
+    host: API_WEBZ.slice(0, API_WEBZ.indexOf('/')),
+    path: `${API_WEBZ.slice(API_WEBZ.indexOf('/'))}?token=${API_TOKEN}&q=${api_query}`,
     method: 'GET'
 }
-console.log(await hitApi(options), 'from here');
-    // TODO: Builder For Query in webz (Make queries extendable)
-        // wildcard asterisk *,
-        // disable stemming $, 
-        // encapsulate parenthesis (), AND +, OR , NOT -, 
-        // literal quotation "",
 // TODO: Query To Add every 200
-db.query(``)
+const webz = new WebzApi(options)
+// await webz.iterateCalls(20, async (chunk) => {
+//     // db.query(``)
+//     console.log('done', chunk.length)
+// });
 
 // TODO: Invoke callback with count & totalCount(totalResults)
+
+
+
+
+
 // TODO : unit test Cases (jest) (no calls to internet or db)
 // TODO : Docker compose
 
