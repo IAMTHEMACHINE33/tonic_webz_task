@@ -42,6 +42,6 @@ export class QueryBuilder {
     }
 
     getFinalQuery(){
-        return this._query;
+        return encodeURI(this._query);
     }
 }
