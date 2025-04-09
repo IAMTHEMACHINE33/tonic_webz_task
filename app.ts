@@ -1,6 +1,8 @@
 import WebzApi from './api.hit.ts';
 import Database  from './postgres.connection.ts';
 import { QueryBuilder } from './query.builder.ts';
+import type { Post, PostOnly, Thread } from './interfaces.ts';
+import { post, thread } from './entities.ts';
 
 // DB Initializing Part
 const db = new Database({
@@ -15,13 +17,13 @@ await db.initialize();
 
 // Query Building Part
 const {literal, stemming, disableStemming} = QueryBuilder;
-const queryBuilder = new QueryBuilder('initial');
+const queryBuilder = new QueryBuilder(stemming('crypto'));
 const api_query = queryBuilder
-    .and('name','surname')
-    .and('another')
-    .or(literal('abc'))
+    .and('digital coin')
+    .and(literal('ethereum'), literal('bitcoin'))
+    .or('doge')
     .getFinalQuery();
-
+// const api_query = 'Tell-me-all-about-cartoon-networks-or-cartoons-in-general';
 
 // API Request To Webz Part
 const API_WEBZ = process.env.API_WEBZ ?? 'api.webz.io/newsApiLite';
@@ -31,16 +33,35 @@ const options = {
     path: `${API_WEBZ.slice(API_WEBZ.indexOf('/'))}?token=${API_TOKEN}&q=${api_query}`,
     method: 'GET'
 }
-// TODO: Query To Add every 200
+
+// Query To Add every 200
 const webz = new WebzApi(options)
-// await webz.iterateCalls(20, async (chunk) => {
-//     // db.query(``)
-//     console.log('done', chunk.length)
-// });
+const chunksize = 100;
+const iterate = webz.iterateCalls(chunksize);
 
-// TODO: Invoke callback with count & totalCount(totalResults)
+let leftToRetrieve = 0;
+let finalCount = 0;
 
+do {
+    const chunk = (await iterate.next()).value;
+    leftToRetrieve = chunk.totalCount - chunk.count;
+    finalCount = chunk.count;
 
+    console.log(`Adding ${chunk.posts.length} from iteration to db`);
+    const threads: Thread[] = [];
+    const posts: PostOnly[] = [];
+
+    chunk.posts.forEach(({ thread, ...rest }: Post) => {
+        threads.push(thread);
+        posts.push(rest);
+    });
+
+    await db.insert(thread, threads);
+    await db.insert(post, posts);
+} while (leftToRetrieve > 0)
+
+console.log('Total count:', finalCount);
+await db.end();
 
 
 
