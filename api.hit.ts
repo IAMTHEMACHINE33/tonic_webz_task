@@ -1,4 +1,5 @@
 import http from 'http';
+import type { INewsApiResponse, IWebzApi, Post } from './interfaces';
 
 // Hit API webz.io (using SDK Or Nah)
 export default class WebzApi {
@@ -33,7 +34,7 @@ export default class WebzApi {
         })
     }
 
-    async iterateCalls(rows: number, cb: (data: Post[]) => void) {
+    async* iterateCalls(rows: number): AsyncIterableIterator<{posts: Post[], count: number, totalCount: number}> {
         let path = this._path;
         let rowsLeft = 0;
         let count = 0;
@@ -42,7 +43,7 @@ export default class WebzApi {
         const posts = [];
         const numberOfRows = 10;
 
-        console.log('Starting iteration')
+        console.log('Starting iteration', path)
         do {
             const data = await this.hitApi<INewsApiResponse>({
                 host: this._host,
@@ -59,93 +60,15 @@ export default class WebzApi {
             posts.push(...data.posts);
 
             if ((count % rows) === 0 || rowsLeft < numberOfRows){
-                await cb(posts);
+                yield {posts, count, totalCount};
                 posts.length = 0;
             }
 
-        } while (rowsLeft >= numberOfRows && !this._abort);
-
-        console.log('Iteration finished', count)
-        return {count, totalCount};
+        } while (rowsLeft >= numberOfRows /* && !this._abort */);
     }
 
-    abortIteration() {
+    // Used for callback version No longer relevant
+    /* abortIteration() {
         this._abort = true;
-    }
-}
-
-interface IWebzApi extends http.RequestOptions {}
-
-interface INewsApiResponse {
-  posts: Post[] | [];
-  totalResults: number;
-  moreResultsAvailable: number;
-  next: string;
-  requestsLeft: number;
-  warnings: string | null;
-}
-
-export interface Post {
-  thread: Thread;
-  uuid: string;
-  url: string;
-  ord_in_thread: number;
-  parent_url: string | null;
-  author: string;
-  published: string;
-  title: string;
-  text: string;
-  highlightText: string;
-  highlightTitle: string;
-  highlightThreadTitle: string;
-  language: string;
-  sentiment: string | null;
-  categories: string[] | null;
-  external_links: string[];
-  external_images: string[];
-  entities: {
-    persons: Entity[];
-  };
-  rating: string | null;
-  crawled: string;
-  updated: string;
-}
-
-interface Thread {
-  uuid: string;
-  url: string;
-  site_full: string;
-  site: string;
-  site_section: string;
-  site_categories: string[];
-  section_title: string;
-  title: string;
-  title_full: string;
-  published: string;
-  replies_count: number;
-  participants_count: number;
-  site_type: string;
-  country: string;
-  main_image: string;
-  performance_score: number;
-  domain_rank: number | null;
-  domain_rank_updated: string | null;
-  social: Social;
-}
-
-interface Social {
-  updated: string;
-  facebook: {
-    likes: number;
-    comments: number;
-    shares: number;
-  };
-  vk: {
-    shares: number;
-  };
-}
-
-interface Entity {
-  name: string;
-  sentiment: string;
+    } */
 }
